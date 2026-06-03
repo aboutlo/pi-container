@@ -10,14 +10,18 @@ RUN apt-get update \
         ripgrep \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @earendil-works/pi-coding-agent \
+RUN npm install -g @earendil-works/pi-coding-agent pnpm \
     && npm cache clean --force
 
 RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh -o /tmp/rtk-install.sh \
     && sh /tmp/rtk-install.sh \
     && rm /tmp/rtk-install.sh \
     && ln -sf /root/.local/bin/rtk /usr/local/bin/rtk \
-    && rtk --version
+    && rtk --version \
+    && rtk init -g --agent pi --auto-patch \
+    && mkdir -p /usr/local/share/pi/extensions \
+    && cp /root/.pi/agent/extensions/rtk.ts /usr/local/share/pi/extensions/rtk.ts \
+    && rm -rf /root/.pi
 
 COPY pi-container-entrypoint.sh /usr/local/bin/pi-container-entrypoint
 RUN chmod +x /usr/local/bin/pi-container-entrypoint

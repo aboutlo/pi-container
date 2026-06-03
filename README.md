@@ -17,9 +17,10 @@ That starts a containerized Pi agent in the directory where you ran `pic`.
 The custom `node:24-trixie-slim` image includes:
 
 - `@earendil-works/pi-coding-agent`
+- `pnpm`
 - `ripgrep`
 - `rtk` installed under `/root/.local/bin`
-- RTK Pi integration initialized at container startup if missing
+- RTK Pi integration loaded from the mounted Pi config, or from the image fallback
 
 ## Requirements
 
@@ -56,20 +57,20 @@ Then rerun the build command.
 Equivalent direct command:
 
 ```bash
-container run -it --memory 4g --ssh \
+container run -it --memory 4g \
   --volume "$PWD:/workspace" \
-  --volume "$HOME/.pi:/root/.pi" \
+  --volume "$HOME/.pi:/root/.pi,readonly" \
   --dns 1.1.1.1 \
   -w /workspace \
-  pi-coding-node:24
+  pi-coding-node:24 --session-dir /workspace/sessions
 ```
 
 To start a shell instead of `pi`:
 
 ```bash
-container run -it --memory 4g --ssh \
+container run -it --memory 4g \
   --volume "$PWD:/workspace" \
-  --volume "$HOME/.pi:/root/.pi" \
+  --volume "$HOME/.pi:/root/.pi,readonly" \
   --dns 1.1.1.1 \
   --entrypoint /bin/bash \
   -w /workspace \
@@ -81,19 +82,22 @@ Smoke test inside the container:
 ```bash
 node --version
 npm --version
+pnpm --version
 rg --version
 rtk --version
 pi --help
 ```
 
-RTK setup runs automatically before `pi` starts if the Pi extension is not already present.
+RTK loads from `~/.pi` when the extension is already present. If `~/.pi` is
+read-only and the extension is missing, the image loads its bundled RTK extension
+instead.
 
 ## Run
 
 Append the `pic` function to `~/.zshrc`:
 
 ```bash
-printf '\npic() {\n  container run -it --memory 4g --ssh \\\n    --volume "$PWD:/workspace" \\\n    --volume "$HOME/.pi:/root/.pi" \\\n    --dns 1.1.1.1 \\\n    -w /workspace \\\n    pi-coding-node:24\n}\n' >> ~/.zshrc
+printf '\npic() {\n  mkdir -p "$PWD/sessions"\n  container run -it --memory 4g \\\n    --volume "$PWD:/workspace" \\\n    --volume "$HOME/.pi:/root/.pi,readonly" \\\n    --dns 1.1.1.1 \\\n    -w /workspace \\\n    pi-coding-node:24 --session-dir /workspace/sessions\n}\n' >> ~/.zshrc
 ```
 
 Reload your shell:
@@ -102,4 +106,6 @@ Reload your shell:
 source ~/.zshrc
 ```
 
-Now, you can run `pic` in every directory and get a pi-agent sandboxed
+Now, you can run `pic` in any directory to start a containerized Pi agent for
+that directory. The function creates `./sessions` for Pi session storage and
+mounts your `~/.pi` config read-only.
