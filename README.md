@@ -1,11 +1,25 @@
 # pi-container
 
-Custom `node:24-trixie-slim` image with:
+Run the Pi coding agent inside an Apple container while editing the current host
+directory. The container gets the tools Pi needs, mounts the current directory as
+`/workspace`, and keeps the normal non-containerized `pi` command untouched.
+
+After setup, run this from any project directory:
+
+```bash
+pic
+```
+
+That starts a containerized Pi agent in the directory where you ran `pic`.
+
+## Image Contents
+
+The custom `node:24-trixie-slim` image includes:
 
 - `@earendil-works/pi-coding-agent`
 - `ripgrep`
 - `rtk` installed under `/root/.local/bin`
-- RTK Pi integration initialized at container startup
+- RTK Pi integration initialized at container startup if missing
 
 ## Requirements
 
@@ -37,7 +51,9 @@ container exec buildkit /bin/sh -lc 'printf "nameserver 1.1.1.1\n" > /etc/resolv
 
 Then rerun the build command.
 
-Run:
+## Test
+
+Equivalent direct command:
 
 ```bash
 container run -it --memory 4g --ssh \
@@ -71,3 +87,19 @@ pi --help
 ```
 
 RTK setup runs automatically before `pi` starts if the Pi extension is not already present.
+
+## Run
+
+Append the `pic` function to `~/.zshrc`:
+
+```bash
+printf '\npic() {\n  container run -it --memory 4g --ssh \\\n    --volume "$PWD:/workspace" \\\n    --volume "$HOME/.pi:/root/.pi" \\\n    --dns 1.1.1.1 \\\n    -w /workspace \\\n    pi-coding-node:24\n}\n' >> ~/.zshrc
+```
+
+Reload your shell:
+
+```bash
+source ~/.zshrc
+```
+
+Now, you can run `pic` in every directory and get a pi-agent sandboxed
