@@ -52,6 +52,24 @@ container exec buildkit /bin/sh -lc 'printf "nameserver 1.1.1.1\n" > /etc/resolv
 
 Then rerun the build command.
 
+## Upgrade Pi
+
+The Pi agent is installed into the image at build time. To upgrade it to the
+latest published npm version, rebuild the image without cache:
+
+```bash
+container build --no-cache --dns 1.1.1.1 -t pi-coding-node:24 .
+```
+
+Verify the version:
+
+```bash
+container run --rm --entrypoint /bin/bash pi-coding-node:24 -lc 'pi --version'
+```
+
+The `pic` function uses the `pi-coding-node:24` tag, so it will use the upgraded
+image after the rebuild.
+
 ## Test
 
 Equivalent direct command:
