@@ -23,7 +23,7 @@ The custom `node:24-trixie-slim` image includes:
 
 ## Requirements
 
-- macOS with Apple container installed.
+- 26.x macOS with Apple container installed.
 - Apple container system services started.
 
 Install Apple container by downloading the latest release asset from:
