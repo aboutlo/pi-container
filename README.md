@@ -11,7 +11,7 @@ uses your host `~/.pi` configuration, and leaves the normal non-containerized
 | --- | --- |
 | `pic` | Normal containerized Pi session; host `~/.pi` is mounted read-only. |
 | `pic-admin` | You need to modify Pi config, for example `pi install`, `pi update`, `/login`, or extension/package changes. |
-| `pic-proxy` | Mullvad VPN is connected and container networking needs a host-side proxy. |
+| `pic-proxy` | A VPN is connected and container networking needs a host-side proxy. |
 
 ## Requirements
 
