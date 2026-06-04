@@ -1,44 +1,37 @@
 # pi-container
 
 Run the Pi coding agent inside an Apple container while editing the current host
-directory. The container gets the tools Pi needs, mounts the current directory as
-`/workspace`, and keeps the normal non-containerized `pi` command untouched.
+project directory. The container mounts the current directory as `/workspace`,
+uses your host `~/.pi` configuration, and leaves the normal non-containerized
+`pi` command untouched.
 
-After setup, run this from any project directory:
+## Commands
 
-```bash
-pic
-```
-
-That starts a containerized Pi agent in the directory where you ran `pic`.
-
-## Image Contents
-
-The custom `node:24-trixie-slim` image includes:
-
-- `@earendil-works/pi-coding-agent`
-- `pnpm`
-- `fd`
-- `ripgrep`
-- `rtk` installed under `/root/.local/bin`
-- RTK Pi integration loaded from the mounted Pi config, or from the image fallback
+| Command | Use when |
+| --- | --- |
+| `pic` | Normal containerized Pi session; host `~/.pi` is mounted read-only. |
+| `pic-admin` | You need to modify Pi config, for example `pi install`, `pi update`, `/login`, or extension/package changes. |
+| `pic-proxy` | Mullvad VPN is connected and container networking needs a host-side proxy. |
 
 ## Requirements
 
-- 26.x macOS with Apple container installed.
+- macOS 26.x with Apple container installed.
 - Apple container system services started.
+- Node.js/npm on the host only if you want to use `pic-proxy`.
 
-Install Apple container by downloading the latest release asset from:
+Install Apple container from:
 
 https://github.com/apple/container/releases
 
-After installing, start the container system:
+Start the container system:
 
 ```bash
 container system start
 ```
 
-Build:
+## Build the Pi Image
+
+Build the container image:
 
 ```bash
 container build --dns 1.1.1.1 -t pi-coding-node:24 .
@@ -53,27 +46,83 @@ container exec buildkit /bin/sh -lc 'printf "nameserver 1.1.1.1\n" > /etc/resolv
 
 Then rerun the build command.
 
-## Upgrade Pi
+## Install the Commands
 
-The Pi agent is installed into the image at build time. To upgrade it to the
-latest published npm version, rebuild the image without cache:
+Add `pic` and `pic-admin` to your shell config, for example `~/.zshrc`:
 
-```bash
-container build --no-cache --dns 1.1.1.1 -t pi-coding-node:24 .
+```zsh
+pic() {
+  mkdir -p "$PWD/sessions"
+  container run -it --memory 4g \
+    --volume "$PWD:/workspace" \
+    --mount type=bind,source="$HOME/.pi",target=/host-pi,readonly \
+    --dns 1.1.1.1 \
+    -w /workspace \
+    pi-coding-node:24 --session-dir /workspace/sessions
+}
+
+pic-admin() {
+  mkdir -p "$PWD/sessions"
+  container run -it --memory 4g \
+    --volume "$PWD:/workspace" \
+    --mount type=bind,source="$HOME/.pi",target=/root/.pi \
+    --dns 1.1.1.1 \
+    -w /workspace \
+    pi-coding-node:24 --session-dir /workspace/sessions
+}
 ```
 
-Verify the version:
+Reload your shell:
 
 ```bash
-container run --rm --entrypoint /bin/bash pi-coding-node:24 -lc 'pi --version'
+source ~/.zshrc
 ```
 
-The `pic` function uses the `pi-coding-node:24` tag, so it will use the upgraded
-image after the rebuild.
+Install `pic-proxy` once from this repo:
 
-## Test
+```bash
+npm install
+npm link
+```
 
-Equivalent direct command:
+This exposes `pic-proxy` as an npm-linked executable, so it works regardless of
+where this repo was cloned.
+
+## Run
+
+From any project directory:
+
+```bash
+pic
+```
+
+This creates `./sessions`, mounts the current directory as `/workspace`, mounts
+host `~/.pi` read-only at `/host-pi`, and copies safe config into container-local
+`/root/.pi`.
+
+When a VPN is connected, you may need to use:
+
+```bash
+pic-proxy
+```
+
+`pic-proxy` starts a local `proxy-chain` forward proxy on the host bridge
+`192.168.64.1:8888`, then starts the same container as `pic` with `HTTP_PROXY`,
+`HTTPS_PROXY`, and `ALL_PROXY` set. This avoids changing host `~/.pi` model
+configuration.
+
+When you need to modify Pi configuration:
+
+```bash
+pic-admin
+```
+
+`pic-admin` mounts host `~/.pi` directly at `/root/.pi`, so use it only for
+configuration-changing operations.
+
+## Test / Debug
+
+Equivalent direct command for `pic`:
 
 ```bash
 container run -it --memory 4g \
@@ -84,7 +133,7 @@ container run -it --memory 4g \
   pi-coding-node:24 --session-dir /workspace/sessions
 ```
 
-To start a shell instead of `pi`:
+Start a shell instead of Pi:
 
 ```bash
 container run -it --memory 4g \
@@ -108,58 +157,41 @@ rtk --version
 pi --help
 ```
 
-Normal runs mount host `~/.pi` read-only at `/host-pi`. The entrypoint copies it
-into the container-local `/root/.pi`, excluding `agent/bin` and `agent/sessions`,
-so Pi can create lock files without mutating host config. RTK loads from the
-copied config when the extension is already present. If it is missing, the image
-loads its bundled RTK extension instead.
+## Upgrade Pi
 
-## Run
-
-Append the `pic` and `pic-admin` functions to `~/.zshrc`:
-
-```zsh
-pic() {
-  mkdir -p "$PWD/sessions"
-  container run -it --memory 4g \
-    --volume "$PWD:/workspace" \
-    --mount type=bind,source="$HOME/.pi",target=/host-pi,readonly \
-    --dns 1.1.1.1 \
-    -w /workspace \
-    pi-coding-node:24 --session-dir /workspace/sessions
-}
-
-pic-admin() {
-  mkdir -p "$PWD/sessions"
-  container run -it --memory 4g \
-    --volume "$PWD:/workspace" \
-    --mount type=bind,source="$HOME/.pi",target=/root/.pi \
-    --dns 1.1.1.1 \
-    -w /workspace \
-    pi-coding-node:24 --session-dir /workspace/sessions
-}```
-
-Reload your shell:
+The Pi agent is installed into the image at build time. To upgrade it to the
+latest published npm version, rebuild without cache:
 
 ```bash
-source ~/.zshrc
+container build --no-cache --dns 1.1.1.1 -t pi-coding-node:24 .
 ```
 
-Now, you can run `pic` in any directory to start a containerized Pi agent for
-that directory. The function creates `./sessions` for Pi session storage and
-mounts your `~/.pi` config read-only.
-
-Use `pic-admin` when you need to run `pi install`, `pi update`, `/login`, or
-other config-changing operations. Normal `pic` runs keep host `~/.pi` read-only.
-
-When Mullvad is connected, install the proxy wrapper once from this repo:
+Verify the version:
 
 ```bash
-npm install
-npm link
+container run --rm --entrypoint /bin/bash pi-coding-node:24 -lc 'pi --version'
 ```
 
-Then use `pic-proxy` instead of `pic`. It starts a local `proxy-chain` forward
-proxy on the host bridge `192.168.64.1:8888`, then starts the same container as
-`pic` with `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` set. The original `pic`
-and `pic-admin` behavior remains unchanged.
+## Image Contents
+
+The custom `node:24-trixie-slim` image includes:
+
+- `@earendil-works/pi-coding-agent`
+- `pnpm`
+- `fd`
+- `ripgrep`
+- `rtk` installed under `/root/.local/bin`
+- RTK Pi integration loaded from the mounted Pi config, or from the image fallback
+
+## Pi Config Handling
+
+Normal `pic` and `pic-proxy` runs mount host `~/.pi` read-only at `/host-pi`.
+The entrypoint copies small config files into `/root/.pi`, excludes lock/session
+files, and symlinks large package directories instead of copying them:
+
+```text
+/root/.pi/agent/npm -> /host-pi/agent/npm
+/root/.pi/agent/git -> /host-pi/agent/git
+```
+
+This keeps startup fast while preserving installed Pi packages/extensions.
