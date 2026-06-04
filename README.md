@@ -18,6 +18,7 @@ The custom `node:24-trixie-slim` image includes:
 
 - `@earendil-works/pi-coding-agent`
 - `pnpm`
+- `fd`
 - `ripgrep`
 - `rtk` installed under `/root/.local/bin`
 - RTK Pi integration loaded from the mounted Pi config, or from the image fallback
@@ -77,7 +78,7 @@ Equivalent direct command:
 ```bash
 container run -it --memory 4g \
   --volume "$PWD:/workspace" \
-  --volume "$HOME/.pi:/root/.pi,readonly" \
+  --mount type=bind,source="$HOME/.pi",target=/host-pi,readonly \
   --dns 1.1.1.1 \
   -w /workspace \
   pi-coding-node:24 --session-dir /workspace/sessions
@@ -88,7 +89,7 @@ To start a shell instead of `pi`:
 ```bash
 container run -it --memory 4g \
   --volume "$PWD:/workspace" \
-  --volume "$HOME/.pi:/root/.pi,readonly" \
+  --mount type=bind,source="$HOME/.pi",target=/host-pi,readonly \
   --dns 1.1.1.1 \
   --entrypoint /bin/bash \
   -w /workspace \
@@ -101,21 +102,24 @@ Smoke test inside the container:
 node --version
 npm --version
 pnpm --version
+fd --version
 rg --version
 rtk --version
 pi --help
 ```
 
-RTK loads from `~/.pi` when the extension is already present. If `~/.pi` is
-read-only and the extension is missing, the image loads its bundled RTK extension
-instead.
+Normal runs mount host `~/.pi` read-only at `/host-pi`. The entrypoint copies it
+into the container-local `/root/.pi`, excluding `agent/bin` and `agent/sessions`,
+so Pi can create lock files without mutating host config. RTK loads from the
+copied config when the extension is already present. If it is missing, the image
+loads its bundled RTK extension instead.
 
 ## Run
 
 Append the `pic` function to `~/.zshrc`:
 
 ```bash
-printf '\npic() {\n  mkdir -p "$PWD/sessions"\n  container run -it --memory 4g \\\n    --volume "$PWD:/workspace" \\\n    --volume "$HOME/.pi:/root/.pi,readonly" \\\n    --dns 1.1.1.1 \\\n    -w /workspace \\\n    pi-coding-node:24 --session-dir /workspace/sessions\n}\n' >> ~/.zshrc
+printf '\npic() {\n  mkdir -p "$PWD/sessions"\n  container run -it --memory 4g \\\n    --volume "$PWD:/workspace" \\\n    --mount type=bind,source="$HOME/.pi",target=/host-pi,readonly \\\n    --dns 1.1.1.1 \\\n    -w /workspace \\\n    pi-coding-node:24 --session-dir /workspace/sessions\n}\n' >> ~/.zshrc
 ```
 
 Reload your shell:
@@ -127,3 +131,6 @@ source ~/.zshrc
 Now, you can run `pic` in any directory to start a containerized Pi agent for
 that directory. The function creates `./sessions` for Pi session storage and
 mounts your `~/.pi` config read-only.
+
+Use a separate admin alias that mounts `~/.pi` writable when you need to run
+`pi install`, `pi update`, `/login`, or other config-changing operations.

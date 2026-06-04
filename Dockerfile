@@ -7,7 +7,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
+        fd-find \
         ripgrep \
+    && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @earendil-works/pi-coding-agent pnpm \
