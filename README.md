@@ -116,10 +116,28 @@ loads its bundled RTK extension instead.
 
 ## Run
 
-Append the `pic` function to `~/.zshrc`:
+Append the `pic` and `pic-admin` functions to `~/.zshrc`:
 
-```bash
-printf '\npic() {\n  mkdir -p "$PWD/sessions"\n  container run -it --memory 4g \\\n    --volume "$PWD:/workspace" \\\n    --mount type=bind,source="$HOME/.pi",target=/host-pi,readonly \\\n    --dns 1.1.1.1 \\\n    -w /workspace \\\n    pi-coding-node:24 --session-dir /workspace/sessions\n}\n' >> ~/.zshrc
+```zsh
+pic() {
+  mkdir -p "$PWD/sessions"
+  container run -it --memory 4g \
+    --volume "$PWD:/workspace" \
+    --mount type=bind,source="$HOME/.pi",target=/host-pi,readonly \
+    --dns 1.1.1.1 \
+    -w /workspace \
+    pi-coding-node:24 --session-dir /workspace/sessions
+}
+
+pic-admin() {
+  mkdir -p "$PWD/sessions"
+  container run -it --memory 4g \
+    --volume "$PWD:/workspace" \
+    --mount type=bind,source="$HOME/.pi",target=/root/.pi \
+    --dns 1.1.1.1 \
+    -w /workspace \
+    pi-coding-node:24 --session-dir /workspace/sessions
+}
 ```
 
 Reload your shell:
@@ -132,5 +150,5 @@ Now, you can run `pic` in any directory to start a containerized Pi agent for
 that directory. The function creates `./sessions` for Pi session storage and
 mounts your `~/.pi` config read-only.
 
-Use a separate admin alias that mounts `~/.pi` writable when you need to run
-`pi install`, `pi update`, `/login`, or other config-changing operations.
+Use `pic-admin` when you need to run `pi install`, `pi update`, `/login`, or
+other config-changing operations. Normal `pic` runs keep host `~/.pi` read-only.
