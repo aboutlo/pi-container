@@ -137,8 +137,7 @@ pic-admin() {
     --dns 1.1.1.1 \
     -w /workspace \
     pi-coding-node:24 --session-dir /workspace/sessions
-}
-```
+}```
 
 Reload your shell:
 
@@ -152,3 +151,15 @@ mounts your `~/.pi` config read-only.
 
 Use `pic-admin` when you need to run `pi install`, `pi update`, `/login`, or
 other config-changing operations. Normal `pic` runs keep host `~/.pi` read-only.
+
+When Mullvad is connected, install the proxy wrapper once from this repo:
+
+```bash
+npm install
+npm link
+```
+
+Then use `pic-proxy` instead of `pic`. It starts a local `proxy-chain` forward
+proxy on the host bridge `192.168.64.1:8888`, then starts the same container as
+`pic` with `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` set. The original `pic`
+and `pic-admin` behavior remains unchanged.

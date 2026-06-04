@@ -1,0 +1,14 @@
+{
+  "name": "pi-container",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "proxy": "node ./pic-proxy-runner.cjs"
+  },
+  "dependencies": {
+    "proxy-chain": "^2.6.0"
+  },
+  "bin": {
+    "pic-proxy": "./pic-proxy-runner.cjs"
+  }
+}
